@@ -2,14 +2,17 @@ package mr.insaf.api;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+import mr.insaf.auth.CurrentUserService;
 import mr.insaf.model.*;
 import mr.insaf.repository.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.sql.SQLException;
 import java.util.List;
 
 @RestController
@@ -19,12 +22,14 @@ public class ApiController {
     private final CategorieCotisationRepository categories;
     private final CotisationEcheanceRepository echeances;
     private final DonRepository dons;
+    private final CurrentUserService currentUser;
 
-    public ApiController(MilitantReferenceRepository militants, CategorieCotisationRepository categories, CotisationEcheanceRepository echeances, DonRepository dons) {
+    public ApiController(MilitantReferenceRepository militants, CategorieCotisationRepository categories, CotisationEcheanceRepository echeances, DonRepository dons, CurrentUserService currentUser) {
         this.militants = militants;
         this.categories = categories;
         this.echeances = echeances;
         this.dons = dons;
+        this.currentUser = currentUser;
     }
 
     public record MilitantInput(@NotBlank String nom, @NotBlank String prenom, String telephone) {
@@ -49,8 +54,9 @@ public class ApiController {
         return new MilitantView(m.id, m.nom, m.prenom, m.telephone, m.source);
     }
 
-    public record CategorieInput(@NotBlank String code, @NotBlank String libelle,
-                                 @NotNull @DecimalMin("0.0") BigDecimal montant, @NotBlank String periodicite) {
+    public record CategorieInput(@NotBlank @Size(max = 40) String code, @NotBlank @Size(max = 150) String libelle,
+                                 @NotNull @DecimalMin("0.0") @Digits(integer = 13, fraction = 2) BigDecimal montant,
+                                 @NotBlank @Size(max = 20) String periodicite) {
     }
 
     public record CategorieView(Long id, String code, String libelle, BigDecimal montant, String periodicite) {
@@ -69,21 +75,33 @@ public class ApiController {
         c.libelle = input.libelle();
         c.montant = input.montant();
         c.periodicite = input.periodicite();
-        c = categories.save(c);
+        try {
+            c = categories.save(c);
+        } catch (DataIntegrityViolationException error) {
+            throw duplicateOrOriginal(error, "Ce code de catégorie existe déjà");
+        }
         return new CategorieView(c.id, c.code, c.libelle, c.montant, c.periodicite);
     }
 
-    public record EcheanceInput(@NotNull Long militantId, @NotNull Long categorieId, @NotNull LocalDate dateDebut,
+    public record EcheanceInput(@NotNull @Positive Long militantId, @NotNull @Positive Long categorieId, @NotNull LocalDate dateDebut,
                                 @NotNull LocalDate dateFin, @NotNull LocalDate dateEcheance) {
     }
 
     public record EcheanceView(Long id, Long militantId, Long categorieId, BigDecimal montantDu, BigDecimal montantPaye,
-                               String statut, LocalDate dateEcheance) {
+                               String statut, LocalDate dateEcheance, BigDecimal solde,
+                               String categorieCode, String categorieLibelle, LocalDate dateDebut, LocalDate dateFin) {
     }
 
     @GetMapping("/echeances")
     public List<EcheanceView> echeances() {
-        return echeances.findAll().stream().map(this::toView).toList();
+        var user = currentUser.requireUser();
+        if (user.roles().contains("ADMIN")) {
+            return echeances.findAll().stream().map(this::toView).toList();
+        }
+        if (!user.roles().contains("MILITANT") || user.militantId() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        return echeances.findAllByMilitant_Id(user.militantId()).stream().map(this::toView).toList();
     }
 
     @PostMapping("/echeances")
@@ -98,11 +116,25 @@ public class ApiController {
         e.dateFin = input.dateFin();
         e.dateEcheance = input.dateEcheance();
         e.montantDu = e.categorie.montant;
-        return toView(echeances.save(e));
+        try {
+            return toView(echeances.save(e));
+        } catch (DataIntegrityViolationException error) {
+            throw duplicateOrOriginal(error, "Une échéance existe déjà pour ce militant, cette catégorie et cette période");
+        }
     }
 
     private EcheanceView toView(CotisationEcheance e) {
-        return new EcheanceView(e.id, e.militant.id, e.categorie.id, e.montantDu, e.montantPaye, e.statut, e.dateEcheance);
+        return new EcheanceView(e.id, e.militant.id, e.categorie.id, e.montantDu, e.montantPaye, e.statut,
+                e.dateEcheance, e.montantDu.subtract(e.montantPaye), e.categorie.code, e.categorie.libelle,
+                e.dateDebut, e.dateFin);
+    }
+
+    private RuntimeException duplicateOrOriginal(DataIntegrityViolationException error, String detail) {
+        // MySQL arbitrates concurrent inserts using the existing unique constraints.
+        if (error.getMostSpecificCause() instanceof SQLException sql && sql.getErrorCode() == 1062) {
+            return new ResponseStatusException(HttpStatus.CONFLICT, detail, error);
+        }
+        return error;
     }
 
     public record DonInput(@NotBlank String nomDonateur, @NotNull @DecimalMin(value = "0.01") BigDecimal montant,

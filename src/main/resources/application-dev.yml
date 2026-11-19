@@ -1,0 +1,10 @@
+server:
+  address: 127.0.0.1
+app:
+  dev-auth:
+    enabled: ${INSAF_DEV_AUTH_ENABLED:false}
+    admin-password: ${INSAF_DEV_ADMIN_PASSWORD:}
+    alice-password: ${INSAF_DEV_ALICE_PASSWORD:}
+    bob-password: ${INSAF_DEV_BOB_PASSWORD:}
+    alice-militant-id: ${INSAF_DEV_ALICE_MILITANT_ID:0}
+    bob-militant-id: ${INSAF_DEV_BOB_MILITANT_ID:0}
