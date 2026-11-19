@@ -16,4 +16,13 @@ public class Don {
     public BigDecimal montant;
     public String statut = "EN_ATTENTE";
     public String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "militant_id")
+    public MilitantReference militant;
+
+    @Column(name = "reference_paiement", length = 36, unique = true)
+    public String referencePaiement;
+
 }
+

@@ -56,6 +56,33 @@ public class SecurityConfig {
                                 .hasRole("MILITANT")
                                 .requestMatchers(HttpMethod.GET, "/api/militants", "/api/categories",
                                         "/api/dons", "/actuator/info").hasRole("ADMIN")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/mes-dons/paiements/*"
+                                ).hasRole("MILITANT")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/mes-dons"
+                                ).hasRole("MILITANT")
+
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/mes-dons"
+                                ).hasRole("MILITANT")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/mes-dons/paiements"
+                                ).hasRole("MILITANT")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/admin/dons",
+                                        "/api/admin/dons/**"
+                                ).hasRole("ADMIN")
+
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/mes-dons/paiements"
+                                ).hasRole("MILITANT")
                                 .requestMatchers(HttpMethod.POST, "/api/militants", "/api/categories",
                                         "/api/dons", "/api/echeances").hasRole("ADMIN");
                     }
