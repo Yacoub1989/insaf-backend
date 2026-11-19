@@ -1,3 +1,4 @@
+
 package mr.insaf.api;
 
 import mr.insaf.auth.CurrentUserService;
@@ -11,18 +12,30 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api")
 public class SessionController {
+
     private final CurrentUserService currentUser;
 
     public SessionController(CurrentUserService currentUser) {
         this.currentUser = currentUser;
     }
 
-    public record Profile(String subject, String username, Set<String> roles) {}
+    public record Profile(
+            String subject,
+            String username,
+            Set<String> roles,
+            Long militantId
+    ) {}
 
     @GetMapping("/me")
     public Profile me() {
         var user = currentUser.requireUser();
-        return new Profile(user.subject(), user.username(), user.roles());
+
+        return new Profile(
+                user.subject(),
+                user.username(),
+                user.roles(),
+                user.militantId()
+        );
     }
 
     @GetMapping("/csrf")

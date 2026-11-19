@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.sql.SQLException;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api")
@@ -104,6 +105,7 @@ public class ApiController {
         return echeances.findAllByMilitant_Id(user.militantId()).stream().map(this::toView).toList();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/echeances")
     @ResponseStatus(HttpStatus.CREATED)
     public EcheanceView echeance(@Valid @RequestBody EcheanceInput input) {

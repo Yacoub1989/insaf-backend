@@ -20,3 +20,9 @@ management:
         include: health,info
 app:
   cors-origin: ${CORS_ORIGIN:http://localhost:5173}
+  database-auth:
+    enabled: ${INSAF_DATABASE_AUTH_ENABLED:false}
+
+  paiements:
+    simulation: ${INSAF_PAIEMENTS_SIMULATION:false}
+    autoriser-rds-test: ${INSAF_AUTORISER_RDS_TEST:false}

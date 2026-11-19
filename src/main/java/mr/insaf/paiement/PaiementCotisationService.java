@@ -147,13 +147,27 @@ public class PaiementCotisationService {
                 BigDecimal nouveauMontant = echeance.montantPaye.add(courant.montant);
                 if (nouveauMontant.compareTo(echeance.montantDu) > 0) {
                     motif = "SOLDE_INSUFFISANT";
+
                 } else {
+                    // Mettre à jour le montant payé
                     echeance.montantPaye = nouveauMontant;
+
+                    // Mettre à jour le statut de l'échéance
+                    if (nouveauMontant.compareTo(echeance.montantDu) == 0) {
+                        echeance.statut = "PAYEE";
+                    } else if (nouveauMontant.compareTo(BigDecimal.ZERO) > 0) {
+                        echeance.statut = "PARTIELLEMENT_PAYEE";
+                    } else {
+                        echeance.statut = "EN_ATTENTE";
+                    }
+
+                    // Confirmer le paiement
                     courant.confirmeLe = Instant.now();
                     courant.statut = CONFIRME;
                     courant.referenceOperateur = preuve.referenceOperateur();
                     courant.modifieLe = courant.confirmeLe;
                 }
+
             } else {
                 courant.statut = preuve.statut();
                 courant.referenceOperateur = preuve.referenceOperateur();

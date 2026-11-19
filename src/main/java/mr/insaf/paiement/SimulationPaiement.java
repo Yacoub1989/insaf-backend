@@ -22,8 +22,9 @@ class SimulationPaiement {
 
         @Override
         public Resultat initier(Demande demande) {
-            return resultat(demande, StatutPaiement.EN_ATTENTE);
+            return resultat(demande, StatutPaiement.CONFIRME);
         }
+
 
         @Override
         public Resultat verifier(Demande demande, String referenceOperateur) {
