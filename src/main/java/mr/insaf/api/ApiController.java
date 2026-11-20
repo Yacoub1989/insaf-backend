@@ -16,6 +16,10 @@ import java.sql.SQLException;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import mr.insaf.auth.CurrentUserService;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+
 @RestController
 @RequestMapping("/api")
 public class ApiController {
@@ -154,11 +158,62 @@ public class ApiController {
     @PostMapping("/dons")
     @ResponseStatus(HttpStatus.CREATED)
     public DonView don(@Valid @RequestBody DonInput input) {
+
+        var user = currentUser.requireUser();
+
+        if (user.roles().contains("MILITANT")) {
+            if (user.militantId() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Aucun militant associé au compte"
+                );
+            }
+        }
+
         Don d = new Don();
         d.nomDonateur = input.nomDonateur();
         d.montant = input.montant();
         d.description = input.description();
+        if (user.roles().contains("MILITANT")) {
+            MilitantReference militant = militants.findById(
+                    user.militantId()
+            ).orElseThrow(() ->
+                    new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Militant introuvable"
+                    )
+            );
+
+            d.militant = militant;
+        }
         d = dons.save(d);
         return new DonView(d.id, d.nomDonateur, d.montant, d.statut, d.description);
+    }
+
+
+    @GetMapping("/dons/mes-dons")
+    public List<DonView> mesDons() {
+
+        var user = currentUser.requireUser();
+
+        Long militantId = user.militantId();
+
+        if (militantId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Compte militant requis"
+            );
+        }
+
+        return dons.findByMilitant_IdOrderByIdDesc(militantId)
+                .stream()
+                .map(d -> new DonView(
+                        d.id,
+                        d.nomDonateur,
+                        d.montant,
+                        d.statut,
+                        d.description
+                ))
+                .toList();
     }
 }
