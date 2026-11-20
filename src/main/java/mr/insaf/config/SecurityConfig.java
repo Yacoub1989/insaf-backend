@@ -99,8 +99,16 @@ public class SecurityConfig {
                                         HttpMethod.POST,
                                         "/api/mes-dons/paiements"
                                 ).hasRole("MILITANT")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/dons/mes-dons"
+                                ).hasRole("MILITANT")
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/dons"
+                                ).hasAnyRole("ADMIN", "MILITANT")
                                 .requestMatchers(HttpMethod.POST, "/api/militants", "/api/categories",
-                                        "/api/dons", "/api/echeances").hasRole("ADMIN");
+                                        "/api/echeances").hasRole("ADMIN");
                     }
                     access.anyRequest().denyAll();
                 });
