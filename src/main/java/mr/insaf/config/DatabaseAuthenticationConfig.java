@@ -18,14 +18,14 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import java.util.Set;
 
 @Configuration
-@Profile("dev & !prod & !production")
+@Profile("prod | production")
 @ConditionalOnProperty(
         name = "app.database-auth.enabled",
         havingValue = "true"
 )
 public class DatabaseAuthenticationConfig {
 
-    @Bean("devAuthenticationProvider")
+    @Bean("databaseAuthenticationProvider")
     DaoAuthenticationProvider devAuthenticationProvider(
             JdbcTemplate jdbc) {
 

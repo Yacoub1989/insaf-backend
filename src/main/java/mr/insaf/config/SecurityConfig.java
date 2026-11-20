@@ -24,12 +24,24 @@ import java.util.List;
 public class SecurityConfig {
     @Bean
     SecurityFilterChain chain(HttpSecurity http,
-                              @Qualifier("devAuthenticationProvider") ObjectProvider<DaoAuthenticationProvider> providers,
+                              @Qualifier("devAuthenticationProvider")
+                              ObjectProvider<DaoAuthenticationProvider> devProviders,
+
+                              @Qualifier("databaseAuthenticationProvider")
+                              ObjectProvider<DaoAuthenticationProvider> databaseProviders,
                               ObjectProvider<MembershipSecurityConfigurer> membership) throws Exception {
-        var dev = providers.getIfAvailable();
+        var dev = devProviders.getIfAvailable();
+        var database = databaseProviders.getIfAvailable();
         var integration = membership.getIfAvailable();
-        if (dev != null && integration != null) {
-            throw new IllegalStateException("Choisir une seule source d’authentification");
+
+        int sources = (dev != null ? 1 : 0)
+                + (database != null ? 1 : 0)
+                + (integration != null ? 1 : 0);
+
+        if (sources > 1) {
+            throw new IllegalStateException(
+                    "Choisir une seule source d'authentification"
+            );
         }
 
         var devChallenge = new BasicAuthenticationEntryPoint();
@@ -48,7 +60,7 @@ public class SecurityConfig {
                     // Let Spring Boot return the original HTTP status for an internal error dispatch.
                     access.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                             .requestMatchers("/actuator/health").permitAll();
-                    if (dev != null || integration != null) {
+                    if (dev != null || database != null || integration != null) {
                         access.requestMatchers(HttpMethod.GET, "/api/me", "/api/csrf").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/echeances").hasAnyRole("ADMIN", "MILITANT")
                                 .requestMatchers(HttpMethod.GET, "/api/paiements", "/api/paiements/*").hasRole("MILITANT")
@@ -97,6 +109,10 @@ public class SecurityConfig {
         }
         if (integration != null) {
             integration.configure(http);
+        }
+        if (database != null) {
+            http.authenticationProvider(database)
+                    .httpBasic(Customizer.withDefaults());
         }
         return http.build();
     }
