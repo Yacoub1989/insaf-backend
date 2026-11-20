@@ -78,6 +78,10 @@ public class SecurityConfig {
                                         "/api/admin/dons",
                                         "/api/admin/dons/**"
                                 ).hasRole("ADMIN")
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/paiements/operateurs"
+                                ).hasRole("MILITANT")
 
                                 .requestMatchers(
                                         HttpMethod.POST,
